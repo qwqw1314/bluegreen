@@ -1,0 +1,109 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: foo-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "test.example.com"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: foo-destination
+spec:
+  host: foo-service
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: foo
+spec:
+  hosts:
+  - "test.example.com"
+  gateways:
+  - foo-gateway
+  http:
+  - match:
+    - uri:
+        exact: /foo
+    route:
+    - destination:
+        host: foo-service
+        subset: v1
+        port:
+          number: 5678
+      weight: 0
+    - destination:
+        host: foo-service
+        subset: v2
+        port:
+          number: 5678
+      weight: 100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo-deployment-v1
+  labels:
+    app: foo-deployment
+    version: v1
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: foo-app
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: foo-app
+        version: v1
+    spec:
+      containers:
+      - name: foo
+        image: hashicorp/http-echo
+        args:
+          - "-text=foo-v1"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo-deployment-v2
+  labels:
+    app: foo-deployment-v2
+    version: v2
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: foo-app
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: foo-app
+        version: v2
+    spec:
+      containers:
+      - name: foo
+        image: hashicorp/http-echo
+        args:
+          - "-text=foo-v2"

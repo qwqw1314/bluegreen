@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foo-deployment-v1
+  labels:
+    app: foo-deployment
+    version: v1
+  annotations:
+    prometheus.io/scrape: "true"
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: foo-app
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: foo-app
+        version: v1
+    spec:
+      containers:
+      - name: foo
+        image: hashicorp/http-echo
+        args: 
+          - "-text=foo-v1"
